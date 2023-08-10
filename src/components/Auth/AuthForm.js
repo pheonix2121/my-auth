@@ -1,12 +1,12 @@
 import { useState, useRef } from "react";
 import classes from "./AuthForm.module.css";
-
 const AuthForm = () => {
   const emailInputRef = useRef();
   const passwordInputRef = useRef();
 
   const [isLogin, setIsLogin] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const switchAuthModeHandler = () => {
     setIsLogin((prevState) => !prevState);
@@ -19,41 +19,39 @@ const AuthForm = () => {
     const enteredPassword = passwordInputRef.current.value;
 
     setIsLoading(true);
+    setErrorMessage('');
 
-    if (isLogin) {
-    } else {
-      try {
-        const response = await fetch(
-          "https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=AIzaSyD-eb2P8uSx1N3ACu4C_ipUFr8OGbPSDIU",
-          {
-            method: "POST",
-            body: JSON.stringify({
-              email: enteredEmail,
-              password: enteredPassword,
-              returnSecureToken: true,
-            }),
-            headers: {
-              "Content-Type": "application/json",
-            },
-          }
-        );
+    const apiKey = "AIzaSyD-eb2P8uSx1N3ACu4C_ipUFr8OGbPSDIU";
+    const url = isLogin
+      ? `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${apiKey}`
+      : `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${apiKey}`;
 
-        setIsLoading(false);
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        body: JSON.stringify({
+          email: enteredEmail,
+          password: enteredPassword,
+          returnSecureToken: true,
+        }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
 
-        if (response.ok) {
-        } else {
-          const data = await response.json();
-          let errorMessage = "Authentication failed!";
-          if (data && data.error && data.error.message) {
-            errorMessage = data.error.message;
-          }
-          alert(errorMessage);
-        }
-      } catch (error) {
-        setIsLoading(false);
-        console.log("Error:", error);
+      const responseData = await response.json();
+      
+      if (response.ok) {
+        console.log(responseData);
+      } else {
+        const errorData = responseData.error;
+        setErrorMessage(errorData.message || "Authentication failed");
       }
+    } catch (error) {
+      setErrorMessage("An error occurred. Please try again later.");
     }
+
+    setIsLoading(false);
   };
 
   return (
@@ -66,18 +64,15 @@ const AuthForm = () => {
         </div>
         <div className={classes.control}>
           <label htmlFor="password">Your Password</label>
-          <input
-            type="password"
-            id="password"
-            required
-            ref={passwordInputRef}
-          />
+          <input type="password" id="password" required ref={passwordInputRef} />
         </div>
         <div className={classes.actions}>
-          {!isLoading && (
+          {!isLoading ? (
             <button>{isLogin ? "Login" : "Create Account"}</button>
+          ) : (
+            <p>Sending request...</p>
           )}
-          {isLoading && <p>Sending request...</p>}
+          {errorMessage && <p className={classes.error}>{errorMessage}</p>}
           <button
             type="button"
             className={classes.toggle}
