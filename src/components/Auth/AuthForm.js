@@ -1,12 +1,14 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useContext } from 'react';
 import classes from "./AuthForm.module.css";
+import AuthContext from '../../store/auth-context';
 const AuthForm = () => {
   const emailInputRef = useRef();
   const passwordInputRef = useRef();
 
+  const authCtx = useContext(AuthContext);
+
   const [isLogin, setIsLogin] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
 
   const switchAuthModeHandler = () => {
     setIsLogin((prevState) => !prevState);
@@ -19,13 +21,15 @@ const AuthForm = () => {
     const enteredPassword = passwordInputRef.current.value;
 
     setIsLoading(true);
-    setErrorMessage('');
+    let url;
 
-    const apiKey = "AIzaSyD-eb2P8uSx1N3ACu4C_ipUFr8OGbPSDIU";
-    const url = isLogin
-      ? `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${apiKey}`
-      : `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${apiKey}`;
+    if (isLogin) {
+      url = "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=AIzaSyCmtOyn5fQSxFFUbd0tmXfIFS-iEZgh6T0";
+    } else {
+      url = "https://identitytoolkit.googleapis.com/v1/accounts:signUp?key= AIzaSyCmtOyn5fQSxFFUbd0tmXfIFS-iEZgh6T0";
+    }
 
+  
     try {
       const response = await fetch(url, {
         method: "POST",
@@ -39,46 +43,51 @@ const AuthForm = () => {
         },
       });
 
-      const responseData = await response.json();
       
+      setIsLoading(false);
       if (response.ok) {
-        console.log(responseData);
+        const data = await response.json();
+        authCtx.login(data.idToken);
       } else {
-        const errorData = responseData.error;
-        setErrorMessage(errorData.message || "Authentication failed");
+        const errorData = await response.json();
+        let errorMessage = 'Authentication failed!';
+         if (errorData && errorData.error && errorData.error.message) {
+           errorMessage = errorData.error.message;
+        }
+        throw new Error(errorMessage);
       }
-    } catch (error) {
-      setErrorMessage("An error occurred. Please try again later.");
+    } catch (err) {
+      alert(err.message);
     }
-
-    setIsLoading(false);
   };
-
   return (
     <section className={classes.auth}>
-      <h1>{isLogin ? "Login" : "Sign Up"}</h1>
+      <h1>{isLogin ? 'Login' : 'Sign Up'}</h1>
       <form onSubmit={submitHandler}>
         <div className={classes.control}>
-          <label htmlFor="email">Your Email</label>
-          <input type="email" id="email" required ref={emailInputRef} />
+          <label htmlFor='email'>Your Email</label>
+          <input type='email' id='email' required ref={emailInputRef} />
         </div>
         <div className={classes.control}>
-          <label htmlFor="password">Your Password</label>
-          <input type="password" id="password" required ref={passwordInputRef} />
+          <label htmlFor='password'>Your Password</label>
+          <input
+            type='password'
+            id='password'
+            required
+            ref={passwordInputRef}
+          />
         </div>
         <div className={classes.actions}>
-          {!isLoading ? (
-            <button>{isLogin ? "Login" : "Create Account"}</button>
-          ) : (
-            <p>Sending request...</p>
+          {!isLoading && (
+            <button>{isLogin ? 'Login' : 'Create Account'}</button>
           )}
-          {errorMessage && <p className={classes.error}>{errorMessage}</p>}
+          {isLoading && <p>Sending request...</p>}
           <button
-            type="button"
+            type='button'
             className={classes.toggle}
             onClick={switchAuthModeHandler}
           >
-            {isLogin ? "Create new account" : "Login with existing account"}
+            {isLogin ? 'Create new account' : 'Login with existing account'}
           </button>
         </div>
       </form>
